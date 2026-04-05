@@ -1,0 +1,380 @@
+{% extends 'quiz/base.html' %}
+{% block title %}Take Quiz | AI Study{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <!-- Quiz Setup Panel -->
+    <div class="col-md-9 col-lg-8">
+        <div class="glass-card p-5 mb-5 shadow-lg border-0" id="quiz-setup">
+            <h2 class="fw-bold text-dark d-flex align-items-center mb-0">
+            <i class="fas fa-microchip text-primary me-3"></i>NeetPrime Diagnostic Engine
+        </h2>
+            
+            <form id="quizForm">
+                <!-- Search Bar -->
+                <div class="mb-4 position-relative">
+                    <label class="form-label text-muted fw-bold mb-2">Search 90+ Chapters</label>
+                    <div class="input-group shadow-sm rounded-pill overflow-hidden">
+                        <span class="input-group-text bg-white border-end-0 px-3"><i class="fas fa-search text-muted"></i></span>
+                        <input type="text" id="chapterSearch" class="form-control border-start-0 ps-0" placeholder="e.g. Genetics, Thermodynamics..." onkeyup="filterChapters()">
+                    </div>
+                </div>
+
+                <!-- Warning Message -->
+                <div id="selectionWarning" class="alert alert-warning py-2 rounded-pill shadow-sm mb-4 d-none">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Focusing on too many chapters might lower AI accuracy.
+                </div>
+
+                <!-- Chapter Selection (Accordion) -->
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <label class="form-label text-muted fw-bold mb-0">Select Chapters</label>
+                        <span class="badge bg-light text-primary border" id="selectedCount">0 selected</span>
+                    </div>
+                    <div class="accordion custom-accordion" id="subjectAccordion">
+                        {% for subject in subjects %}
+                        <div class="accordion-item glass-card mb-3 border-0 overflow-hidden subject-wrapper" data-subject-name="{{ subject.name|lower }}">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed fw-bold py-3 text-primary bg-primary bg-opacity-10 border-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ subject.id }}">
+                                    <i class="fas fa-book-medical me-3"></i>{{ subject.name }}
+                                    <span class="ms-auto me-3 badge rounded-pill bg-white text-primary border chapter-pill-count">{{ subject.chapters.count }} chapters</span>
+                                </button>
+                            </h2>
+                            <div id="collapse{{ subject.id }}" class="accordion-collapse collapse" data-bs-parent="#subjectAccordion">
+                                <div class="accordion-body bg-light-subtle">
+                                    <div class="row g-3">
+                                        {% for chapter in subject.chapters.all %}
+                                        <div class="col-md-6 chapter-item" data-chapter-name="{{ chapter.name|lower }}">
+                                            <div class="form-check custom-checkbox-card p-2 rounded border bg-white transition-all">
+                                                <input class="form-check-input chapter-checkbox ms-1" type="checkbox" value="{{ chapter.id }}" id="chap{{ chapter.id }}" onchange="handleSelectionChange()">
+                                                <label class="form-check-label fw-medium ms-2 w-100 cursor-pointer" for="chap{{ chapter.id }}">
+                                                    {{ chapter.name }}
+                                                </label>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div id="noResults" class="text-center py-4 d-none">
+                        <i class="fas fa-search fa-3x text-light mb-3"></i>
+                        <p class="text-muted">No chapters found matching your search.</p>
+                    </div>
+                </div>
+
+                <!-- Professional Mode Toggle -->
+                <div class="mb-5 text-center">
+                    <label class="form-label text-muted fw-bold mb-3 d-block">Select Challenge Level</label>
+                    <div class="btn-group w-100 mode-toggle shadow-sm p-1 bg-light rounded-pill" role="group">
+                        <input type="radio" class="btn-check" name="difficulty" id="modeEasy" value="Easy" autocomplete="off">
+                        <label class="btn btn-outline-primary rounded-pill border-0 py-2 fw-bold" for="modeEasy">EASY</label>
+
+                        <input type="radio" class="btn-check" name="difficulty" id="modeMedium" value="Medium" autocomplete="off" checked>
+                        <label class="btn btn-outline-primary rounded-pill border-0 py-2 fw-bold" for="modeMedium">MEDIUM</label>
+
+                        <input type="radio" class="btn-check" name="difficulty" id="modeHard" value="Hard" autocomplete="off">
+                        <label class="btn btn-outline-primary rounded-pill border-0 py-2 fw-bold" for="modeHard">HARD</label>
+                    </div>
+                </div>
+                
+                <div class="d-grid gap-2">
+                    <button type="button" id="btnGenerate" class="btn btn-primary btn-lg fw-bold rounded-pill shadow grow-on-hover" onclick="startQuiz()">
+                        <i class="fas fa-microchip me-2"></i>Consult AI & Generate 15 MCQs
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Quiz Player (Hidden by default) -->
+        <div id="quiz-player" style="display: none;"></div>
+    </div>
+</div>
+
+<style>
+    .mode-toggle .btn-check:checked + .btn {
+        background-color: var(--bs-primary);
+        color: white;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+    .subject-wrapper.d-none, .chapter-item.d-none {
+        display: none !important;
+    }
+    .custom-checkbox-card:hover {
+        border-color: var(--bs-primary) !important;
+        background-color: rgba(99, 102, 241, 0.05) !important;
+    }
+    .transition-all {
+        transition: all 0.2s ease-in-out;
+    }
+    .cursor-pointer {
+        cursor: pointer;
+    }
+    .accordion-button:not(.collapsed) {
+        background-color: rgba(99, 102, 241, 0.05);
+        color: var(--bs-primary);
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentQuestions = [];
+    let currentIdx = 0;
+    let correctCount = 0;
+    let currentTestId = null;
+    let userAnswers = []; // Store student choices
+
+    function filterChapters() {
+// ... (omitted for brevity during replace, but I'll ensure I don't break the existing logic)
+// Wait, I should replace exactly what I need.
+        const query = document.getElementById('chapterSearch').value.toLowerCase().trim();
+        const subjects = document.querySelectorAll('.subject-wrapper');
+        const noResults = document.getElementById('noResults');
+        let totalVisible = 0;
+
+        subjects.forEach(subject => {
+            const chapters = subject.querySelectorAll('.chapter-item');
+            let subjectHasMatch = false;
+
+            chapters.forEach(chapter => {
+                const name = chapter.getAttribute('data-chapter-name');
+                if (name.includes(query)) {
+                    chapter.classList.remove('d-none');
+                    subjectHasMatch = true;
+                    totalVisible++;
+                } else {
+                    chapter.classList.add('d-none');
+                }
+            });
+
+            if (subjectHasMatch) {
+                subject.classList.remove('d-none');
+                // Automatically expand subject if searching
+                if (query.length > 2) {
+                    const collapse = subject.querySelector('.accordion-collapse');
+                    if (!collapse.classList.contains('show')) {
+                        const bsCollapse = new bootstrap.Collapse(collapse, { toggle: false });
+                        bsCollapse.show();
+                    }
+                }
+            } else {
+                subject.classList.add('d-none');
+            }
+        });
+
+        noResults.classList.toggle('d-none', totalVisible > 0 || query === "");
+    }
+
+    function handleSelectionChange() {
+        const selected = document.querySelectorAll('.chapter-checkbox:checked');
+        const count = selected.length;
+        const warning = document.getElementById('selectionWarning');
+        const countBadge = document.getElementById('selectedCount');
+
+        countBadge.innerText = `${count} selected`;
+        countBadge.classList.toggle('bg-primary', count > 0);
+        countBadge.classList.toggle('text-white', count > 0);
+
+        if (count > 5) {
+            warning.classList.remove('d-none');
+        } else {
+            warning.classList.add('d-none');
+        }
+    }
+
+    async function startQuiz() {
+        const checkboxes = document.querySelectorAll('.chapter-checkbox:checked');
+        const chapterNames = Array.from(checkboxes).map(cb => {
+            const label = document.querySelector(`label[for="${cb.id}"]`);
+            return label ? label.innerText.trim() : "";
+        }).filter(n => n !== "");
+        
+        const difficulty = document.querySelector('input[name="difficulty"]:checked').value;
+        
+        if (chapterNames.length === 0) {
+            alert("Security: You must authorize at least one chapter for processing.");
+            return;
+        }
+        
+        const btn = document.getElementById('btnGenerate');
+        const originalContent = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Syncing Neural Weights...';
+        btn.disabled = true;
+        
+        try {
+            const res = await fetch('/quiz/api/generate/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    chapter_names: chapterNames, 
+                    difficulty: difficulty 
+                })
+            });
+            
+            if (res.redirected) {
+                alert("Session expired. Please log in again to generate tests.");
+                window.location.href = res.url;
+                return;
+            }
+            
+            if (!res.ok) {
+                const text = await res.text();
+                let errorMsg = "Generation mismatch.";
+                try {
+                    const errorData = JSON.parse(text);
+                    errorMsg = errorData.error || errorMsg;
+                } catch(e) {
+                    console.error("Non-JSON error response:", text);
+                }
+                throw new Error(errorMsg);
+            }
+            
+            const data = await res.json();
+            currentQuestions = data.questions;
+            currentTestId = data.test_id; 
+            correctCount = 0;
+            userAnswers = currentQuestions.map(q => ({
+                question_text: q.question_text || q.question,
+                options: q.options,
+                selected_answer: "No Answer",
+                correct_answer: q.correct_answer
+            }));
+            
+            document.getElementById('quiz-setup').style.display = 'none';
+            document.getElementById('quiz-player').style.display = 'block';
+            
+            renderQuestion();
+            
+        } catch (error) {
+            console.error(error);
+            alert("AI Error: " + error.message);
+            btn.innerHTML = originalContent;
+            btn.disabled = false;
+        }
+    }
+
+    function renderQuestion() {
+        if (currentIdx >= currentQuestions.length) {
+            document.getElementById('quiz-player').innerHTML = `
+                <div class="glass-card p-5 text-center shadow-lg border-0">
+                    <div class="mb-4">
+                        <i class="fas fa-award fa-5x text-warning hover-lift"></i>
+                    </div>
+                    <h2 class="fw-bold mb-3">Diagnostic Complete</h2>
+                    <p class="text-muted fs-5 mb-4 text-center">Final Score: <span class="text-primary fw-bold">${correctCount}/${currentQuestions.length}</span></p>
+                    <div class="d-flex justify-content-center gap-3">
+                        <button class="btn btn-outline-secondary px-5 py-2 rounded-pill fw-bold" onclick="location.reload()"><i class="fas fa-redo me-2"></i>RE-TRY</button>
+                        <button class="btn btn-primary px-5 py-2 rounded-pill fw-bold shadow" onclick="submitQuiz()"><i class="fas fa-check-circle me-2"></i>SAVE & VIEW DASHBOARD</button>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+        
+        const q = currentQuestions[currentIdx];
+        const safeCorrect = q.correct_answer.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        
+        const optionsHtml = q.options.map((opt, i) => {
+            const safeOpt = opt.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            const letter = String.fromCharCode(65 + i); // A, B, C, D
+            return `
+            <div class="d-grid mb-3">
+                <button class="btn btn-outline-secondary text-start option-btn p-3 fw-semibold transition-all shadow-sm" style="border-radius:1rem;" onclick="checkAnswer(this, '${safeOpt}', '${safeCorrect}', '${letter}')">
+                    <span class="badge bg-light text-dark me-2 border">${letter}</span> ${opt}
+                </button>
+            </div>
+            `;
+        }).join('');
+        
+        document.getElementById('quiz-player').innerHTML = `
+            <div class="mb-4 d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center">
+                    <div class="spinner-grow spinner-grow-sm text-primary me-2" role="status"></div>
+                    <span class="fw-bold text-primary">LIVE MODULE</span>
+                </div>
+                <span class="badge bg-white text-dark p-2 px-3 rounded-pill border shadow-sm">NEET SCORE: ${currentIdx + 1}/${currentQuestions.length}</span>
+            </div>
+            <div class="glass-card p-5 shadow-lg border-0 mb-4 position-relative overflow-hidden">
+                <div class="progress position-absolute top-0 start-0 w-100" style="height: 4px;">
+                    <div class="progress-bar bg-primary" style="width: ${((currentIdx + 1) / currentQuestions.length) * 100}%"></div>
+                </div>
+                <h4 class="fw-bold lh-base mb-5" style="letter-spacing: -0.01em;">${q.question_text || q.question}</h4>
+                <div class="options-container">
+                    ${optionsHtml}
+                </div>
+            </div>
+            <div class="d-flex justify-content-end" id="next-btn-container" style="visibility: hidden">
+                <button class="btn btn-dark fw-bold px-5 py-3 rounded-pill shadow-lg grow-on-hover" onclick="nextQuestion()">NEXT QUESTION <i class="fas fa-arrow-right ms-2"></i></button>
+            </div>
+        `;
+    }
+
+    function checkAnswer(btn, selected, correct, letter) {
+        const btns = document.querySelectorAll('.option-btn');
+        btns.forEach(b => b.disabled = true);
+        
+        if (selected === correct) {
+            btn.classList.add('btn-success', 'text-white', 'border-success', 'shadow-lg');
+            btn.innerHTML += '<i class="fas fa-check-circle float-end mt-1 fs-5"></i>';
+            correctCount++; 
+        } else {
+            btn.classList.add('btn-danger', 'text-white', 'border-danger', 'shadow-lg');
+            btn.innerHTML += '<i class="fas fa-times-circle float-end mt-1 fs-5"></i>';
+            
+            btns.forEach(b => {
+                const text = b.innerText.substring(2).trim();
+                if (text === correct.trim()) {
+                    b.classList.add('btn-success', 'text-white', 'border-success');
+                }
+            });
+        }
+        
+        // REPAIR: Store the letter for professional validation
+        userAnswers[currentIdx].selected_letter = letter;
+        userAnswers[currentIdx].selected_answer = selected; 
+        document.getElementById('next-btn-container').style.visibility = 'visible';
+    }
+    
+    function nextQuestion() {
+        currentIdx++;
+        renderQuestion();
+    }
+
+    async function submitQuiz() {
+        if (!currentTestId) return;
+        
+        const btn = event.currentTarget;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Uploading Vectors...';
+        btn.disabled = true;
+        
+        try {
+            const res = await fetch('/quiz/api/submit/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    test_id: currentTestId, 
+                    score: correctCount,
+                    answers: userAnswers
+                })
+            });
+            
+            if (res.ok) {
+                // Redirect to the detailed review page
+                window.location.href = `/quiz/result/${currentTestId}/`;
+            } else {
+                alert("Data Link Error: Score could not be stabilized.");
+                btn.disabled = false;
+                btn.innerHTML = 'LOCK IN & VIEW DASHBOARD';
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Network Error: Link to Analytics server lost.");
+        }
+    }
+</script>
+{% endblock %}

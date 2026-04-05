@@ -1,0 +1,109 @@
+{% extends 'quiz/base.html' %}
+{% block title %}Performance Review | AI Study{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center animate-fade-in">
+    <div class="col-md-10 col-lg-8">
+        <!-- Performance Header: Summary Card -->
+        <div class="glass-card mb-5 shadow-lg border-0 overflow-hidden position-relative animate-fade-in" style="border-radius: 30px;">
+            <div class="row g-0">
+                <div class="col-md-4 bg-primary bg-opacity-10 d-flex flex-column justify-content-center align-items-center p-5 border-end border-primary border-opacity-10">
+                    <div class="display-4 fw-bold text-primary mb-0">{{ recalculated_score|default:0 }}</div>
+                    <div class="text-primary small fw-bold opacity-75 letter-spacing-1">RAW SCORE</div>
+                    <div class="mt-2 text-muted small">out of {{ test.total_questions }}</div>
+                </div>
+                <div class="col-md-8 p-5 text-center text-md-start">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2 class="fw-bold mb-0 text-dark">Diagnostic Summary</h2>
+                        <span class="badge {% if score_percentage >= 80 %}bg-success{% elif score_percentage >= 50 %}bg-warning text-dark{% else %}bg-danger{% endif %} rounded-pill px-4 py-2 fs-6 shadow-sm">
+                            {{ score_percentage }}% Accuracy
+                        </span>
+                    </div>
+                    <p class="text-dark fs-5 mb-0 opacity-100">
+                        {% if score_percentage >= 80 %}
+                            <i class="fas fa-medal text-success me-2"></i><strong class="text-dark">Strategic Mastery:</strong> You demonstrated exceptional diagnostic recall. NCERT fundamentals are secure.
+                        {% elif score_percentage >= 50 %}
+                            <i class="fas fa-search text-primary me-2"></i><strong class="text-dark">Focused Analysis:</strong> Solid foundation, but critical gaps in sub-chapter recall identified. 
+                        {% else %}
+                            <i class="fas fa-book-medical text-danger me-2"></i><strong class="text-dark">Clinical Remediation:</strong> Immediate NCERT intensive review recommended for this module.
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Question Breakdown -->
+        <h3 class="fw-bold mb-4 d-flex align-items-center">
+            <i class="fas fa-list-check me-2 text-primary"></i>
+            Diagnostic Breakdown
+        </h3>
+
+        {% for item in results %}
+        <div class="glass-card p-4 mb-4 shadow border-0 position-relative transition-all hover-lift">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <span class="badge {% if item.is_correct %}bg-success{% else %}bg-danger{% endif %} rounded-pill px-3 py-2">
+                    Question {{ item.index }}
+                </span>
+                {% if item.is_correct %}
+                    <i class="fas fa-check-circle text-success fs-4"></i>
+                {% else %}
+                    <i class="fas fa-circle-xmark text-danger fs-4"></i>
+                {% endif %}
+            </div>
+
+            <h5 class="fw-bold mb-4 lh-base">{{ item.question_text|default:"Diagnostic Data Corrupted - Please Review NCERT" }}</h5>
+
+            <div class="options-review mb-4">
+                {% for opt in item.options %}
+                    <div class="p-3 rounded-pill mb-2 border fw-medium small-label 
+                        {% if opt.css_class == 'success' %}bg-success-glow text-success border-success fw-bold
+                        {% elif opt.css_class == 'danger' %}bg-danger-glow text-danger border-danger
+                        {% else %}bg-light text-muted border-light{% endif %}">
+                        <span class="me-2">{{ opt.label }}</span> {{ opt.text }}
+                        {% if opt.icon == 'check' %}
+                            <i class="fas fa-check-circle float-end mt-1 fs-5"></i>
+                        {% elif opt.icon == 'times' %}
+                            <i class="fas fa-circle-xmark float-end mt-1 fs-5"></i>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+
+            {% if not item.is_correct %}
+                <div class="alert alert-info border-0 shadow-sm rounded-4 p-4 mt-3">
+                    <div class="d-flex align-items-center mb-2">
+                        <div class="bg-info bg-opacity-10 p-2 rounded-circle me-3">
+                            <i class="fas fa-lightbulb text-info fs-5"></i>
+                        </div>
+                        <span class="fw-bold text-info small letter-spacing-1">NCERT SCIENTIFIC CONTEXT</span>
+                    </div>
+                    <p class="mb-0 text-dark opacity-75 fst-italic lh-base">
+                        "{{ item.explanation }}"
+                    </p>
+                </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        <!-- Footer Actions -->
+        <div class="text-center mt-5 mb-5 pb-5">
+            <a href="{% url 'dashboard' %}" class="btn btn-dark btn-lg px-5 py-3 rounded-pill shadow-lg fw-bold transition-all hover-scale">
+                <i class="fas fa-house me-2"></i>RETURN TO COMMAND CENTER
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-success-glow { background-color: rgba(25, 135, 84, 0.9); box-shadow: 0 0 15px rgba(25, 135, 84, 0.15); border: 1px solid rgba(25, 135, 84, 0.3) !important; color: #ffffff !important; }
+    .bg-danger-glow { background-color: rgba(220, 53, 69, 0.9); border: 1px solid rgba(220, 53, 69, 0.3) !important; color: #ffffff !important; }
+    .bg-success-glow *, .bg-danger-glow * { color: #ffffff !important; }
+    .alert-info { background: #e0f2fe; border: 1px solid #bae6fd; color: #0369a1; }
+    .animate-fade-in { animation: fadeIn 0.8s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .hover-lift:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.1) !important; }
+    .hover-scale:hover { transform: scale(1.05); }
+    .small-label { font-size: 0.95rem; }
+    .letter-spacing-1 { letter-spacing: 0.5px; }
+</style>
+{% endblock %}

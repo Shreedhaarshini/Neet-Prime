@@ -1,0 +1,74 @@
+{% extends 'quiz/base.html' %}
+{% block title %}Profile | NeetPrime Medical Portal{% endblock %}
+
+{% block extra_css %}
+<style>
+    .profile-avatar {
+        width: 150px;
+        height: 150px;
+        border-radius: 40px;
+        background: linear-gradient(135deg, var(--caduceus-gold), #b45309);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 4rem;
+        color: var(--medical-blue);
+        margin: 0 auto 1.5rem;
+        box-shadow: 0 10px 30px rgba(234, 179, 8, 0.3);
+        border: 4px solid rgba(255,255,255,0.1);
+    }
+    
+    .rank-badge {
+        display: inline-block;
+        padding: 8px 16px;
+        background: rgba(234, 179, 8, 0.1);
+        border: 1px solid rgba(234, 179, 8, 0.2);
+        color: var(--caduceus-gold);
+        border-radius: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 2rem;
+    }
+
+    .info-label { color: var(--text-dim); font-size: 0.85rem; text-transform: uppercase; margin-bottom: 4px; }
+    .info-value { font-size: 1.1rem; font-weight: 600; color: var(--text-main); margin-bottom: 20px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="glass-card text-center p-5">
+            <div class="profile-avatar">
+                <i class="fas fa-user-md"></i>
+            </div>
+            
+            <h2 class="fw-bold mb-1">{{ user.username }}</h2>
+            <div class="rank-badge">{{ rank }}</div>
+            
+            <div class="row mt-4 text-start bg-dark bg-opacity-25 rounded-4 p-4 text-white">
+                <div class="col-md-6">
+                    <div class="info-label">Email Address</div>
+                    <div class="info-value">{{ user.email|default:"Not Provided" }}</div>
+                    
+                    <div class="info-label">Member Since</div>
+                    <div class="info-value">{{ user.date_joined|date:"F Y" }}</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="info-label">Total Mock Tests</div>
+                    <div class="info-value">{{ total_tests }}</div>
+                    
+                    <div class="info-label">Account Status</div>
+                    <div class="info-value text-success"><i class="fas fa-check-circle me-1"></i> Premium Verified</div>
+                </div>
+            </div>
+            
+            <div class="mt-5 d-flex justify-content-center gap-3">
+                <button class="btn btn-premium px-5">Edit Profile</button>
+                <a href="{% url 'logout' %}" class="btn btn-outline-danger border-0 px-5 rounded-4 fw-bold" style="background: rgba(220, 53, 69, 0.1);">Logout</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

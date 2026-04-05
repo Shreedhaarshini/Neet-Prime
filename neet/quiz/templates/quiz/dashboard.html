@@ -1,0 +1,202 @@
+{% extends 'quiz/base.html' %}
+{% block title %}Dashboard | NeetPrime Command Center{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-value { font-size: 2.2rem; font-weight: 800; color: var(--caduceus-gold); margin-bottom: 0; }
+    .stat-label { color: var(--text-dim); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; }
+    
+    /* Progress Ring */
+    .progress-ring-container { position: relative; width: 150px; height: 150px; margin: 0 auto; }
+    .progress-ring { transform: rotate(-90deg); }
+    .progress-ring__circle {
+        stroke-dasharray: 440;
+        stroke-dashoffset: 440;
+        transition: stroke-dashoffset 1s ease-out;
+    }
+
+    .table-premium { color: var(--text-main); }
+    .table-premium th { border-bottom: 1px solid var(--glass-border); color: var(--text-dim); padding: 1rem; }
+    .table-premium td { border-bottom: 1px solid var(--glass-border); vertical-align: middle; padding: 1rem; }
+    
+    .badge-score {
+        padding: 5px 12px;
+        border-radius: 8px;
+        font-weight: 600;
+        background: rgba(234, 179, 8, 0.1);
+        color: var(--caduceus-gold);
+        border: 1px solid rgba(234, 179, 8, 0.2);
+    }
+    
+    .review-btn {
+        background: rgba(255,255,255,0.05);
+        border: 1px solid var(--glass-border);
+        color: var(--text-main);
+        transition: all 0.3s ease;
+    }
+    .review-btn:hover {
+        background: var(--caduceus-gold);
+        color: var(--medical-blue);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row align-items-center mb-5">
+    <div class="col-lg-8">
+        <h1 class="fw-bold mb-1">Welcome back, <span class="text-warning">{{ user.username }}</span>.</h1>
+        <p class="text-dim">Your medical journey is evolving. Current focus: High Yield Topics.</p>
+    </div>
+    <div class="col-lg-4 text-lg-end">
+        <a href="{% url 'quiz' %}" class="btn btn-premium">
+            <i class="fas fa-plus-circle me-2"></i> New Mock Test
+        </a>
+    </div>
+</div>
+
+<!-- Stats Row -->
+<div class="row g-4 mb-5">
+    <div class="col-md-4">
+        <div class="glass-card text-center">
+            <div class="stat-label">Total Tests</div>
+            <div class="stat-value">{{ total_tests }}</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="glass-card text-center">
+            <div class="stat-label">Avg Accuracy</div>
+            <div class="stat-value">{{ avg_accuracy }}%</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="glass-card text-center">
+            <div class="stat-label">Current Rank</div>
+            <div class="stat-value" style="font-size: 1.5rem; margin-top: 10px;">{{ rank|default:"Aspirant" }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-5">
+    <!-- Chart Column -->
+    <div class="col-xl-8">
+        <div class="glass-card h-100">
+            <h5 class="fw-bold mb-4"><i class="fas fa-chart-pie me-2 text-warning"></i> Performance Radar</h5>
+            <div style="height: 400px;">
+                <canvas id="radarChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Daily Target Column -->
+    <div class="col-xl-4">
+        <div class="glass-card h-100 text-center">
+            <h5 class="fw-bold mb-4">Daily Target</h5>
+            <div class="progress-ring-container my-4" id="progress-data" data-percent="{{ daily_target_percent|default:0 }}">
+                <svg class="progress-ring" width="150" height="150">
+                    <circle class="progress-ring__circle-bg" stroke="rgba(255,255,255,0.05)" stroke-width="12" fill="transparent" r="70" cx="75" cy="75"/>
+                    <circle id="progressCircle" class="progress-ring__circle" stroke="var(--caduceus-gold)" stroke-width="12" fill="transparent" r="70" cx="75" cy="75" style="stroke-linecap: round;"/>
+                </svg>
+                <div style="position: absolute; top:50%; left:50%; transform: translate(-50%, -50%);">
+                    <span class="fs-2 fw-bold">{{ tests_today }}</span><span class="text-dim">/3</span>
+                </div>
+            </div>
+            <p class="text-dim px-3">Complete 3 mocks daily to maintain your status.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="row">
+    <div class="col-12">
+        <div class="glass-card">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h5 class="fw-bold mb-0"><i class="fas fa-history me-2 text-warning"></i> Recent Activity</h5>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-premium">
+                    <thead>
+                        <tr>
+                            <th>Subject</th>
+                            <th>Date</th>
+                            <th>Score</th>
+                            <th>Status</th>
+                            <th class="text-end">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for result in recent_activity %}
+                        <tr>
+                            <td class="fw-semibold">{{ result.subject.name|default:"Mixed" }}</td>
+                            <td>{{ result.date_taken|date:"M d, Y" }}</td>
+                            <td><span class="badge-score">{{ result.score }}/{{ result.total_questions }}</span></td>
+                            <td>
+                                {% if result.score >= 10 %}
+                                <span class="text-success small"><i class="fas fa-check-circle me-1"></i> Excellent</span>
+                                {% else %}
+                                <span class="text-warning small"><i class="fas fa-info-circle me-1"></i> Improving</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <a href="{% url 'quiz_result' result.id %}" class="btn btn-sm review-btn rounded-pill px-3">Review</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center text-dim py-5">No clinical records found. Start a mock test to begin.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", async function() {
+        // Progress Ring Animation
+        const circle = document.getElementById('progressCircle');
+        const radius = circle.r.baseVal.value;
+        const circumference = radius * 2 * Math.PI;
+        circle.style.strokeDasharray = `${circumference} ${circumference}`;
+        
+        const percent = parseInt(document.getElementById('progress-data').dataset.percent);
+        circle.style.strokeDashoffset = circumference - (percent / 100) * circumference;
+
+        // Fetch Chart Data
+        try {
+            const response = await fetch('/quiz/api/dashboard/');
+            const apiData = await response.json();
+
+            new Chart(document.getElementById('radarChart'), {
+                type: 'radar',
+                data: apiData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: { color: 'rgba(255,255,255,0.1)' },
+                            angleLines: { color: 'rgba(255,255,255,0.1)' },
+                            pointLabels: { color: '#94a3b8', font: { family: 'Outfit', size: 14 } },
+                            ticks: { display: false }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: { color: '#f8fafc', font: { family: 'Outfit' } }
+                        }
+                    }
+                }
+            });
+        } catch (e) {
+            console.error("Dashboard Engine Offline:", e);
+        }
+    });
+</script>
+{% endblock %}

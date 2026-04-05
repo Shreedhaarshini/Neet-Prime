@@ -1,0 +1,147 @@
+{% extends 'quiz/base.html' %}
+{% block title %}Initialize Profile | NeetPrime Entrance{% endblock %}
+
+{% block extra_css %}
+<style>
+    body { background-color: #0f172a; overflow: hidden; }
+    .auth-container { 
+        min-height: 100vh; 
+        display: flex; 
+        align-items: stretch; 
+        width: 100vw; 
+        position: fixed; 
+        top: 0; 
+        left: 0; 
+        z-index: 2000; 
+    }
+    
+    .auth-left {
+        flex: 1;
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 5rem;
+        position: relative;
+    }
+
+    .auth-left::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: radial-gradient(circle at 20% 30%, rgba(234, 179, 8, 0.05) 0%, transparent 50%);
+    }
+
+    .auth-right {
+        width: 50%;
+        background: #ffffff;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 5rem;
+        position: relative;
+    }
+
+    /* Glassmorphism Card on White */
+    .glass-login-card {
+        background: rgba(255, 255, 255, 0.4);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(15, 23, 42, 0.05);
+        border-radius: 24px;
+        padding: 3rem;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+    }
+
+    .glow-portal-btn {
+        background: #0f172a;
+        color: #ffffff;
+        border: none;
+        padding: 1.2rem;
+        border-radius: 14px;
+        font-weight: 700;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(15, 23, 42, 0.2);
+        letter-spacing: 1px;
+        text-transform: uppercase;
+    }
+
+    .glow-portal-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 30px rgba(234, 179, 8, 0.4);
+        background: #1e293b;
+        color: #eab308;
+    }
+
+    .form-floating > .form-control {
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 1rem 1.2rem;
+    }
+
+    .form-floating > .form-control:focus {
+        border-color: #0f172a;
+        box-shadow: 0 0 0 4px rgba(15, 23, 42, 0.05);
+    }
+
+    @media (max-width: 992px) {
+        .auth-left { display: none; }
+        .auth-right { width: 100%; padding: 2rem; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-left">
+        <div style="max-width: 600px; z-index: 1;">
+            <div class="d-flex align-items-center mb-5">
+                <i class="fas fa-user-plus text-warning fs-1 me-3"></i>
+                <span class="fs-3 fw-bold text-white" style="letter-spacing: 3px;">NEETPRIME</span>
+            </div>
+            <h1 class="display-3 fw-bold text-white mb-4" style="line-height: 1.1; font-family: 'Playfair Display', serif;">
+                NeetPrime: Initialize your clinical journey today.
+            </h1>
+            <div style="width: 80px; height: 4px; background: #eab308; border-radius: 2px;" class="mb-4"></div>
+            <p class="fs-5 text-white opacity-50">Authorized registration for medical aspirants. AI-driven performance tracking starts here.</p>
+        </div>
+    </div>
+    
+    <div class="auth-right">
+        <div class="glass-login-card mx-auto w-100" style="max-width: 450px;">
+            <div class="mb-5 text-center">
+                <h2 class="fw-bold text-dark mb-2">Create Profile</h2>
+                <p class="text-muted">Initialize student diagnostic session</p>
+            </div>
+
+            <form method="post">
+                {% csrf_token %}
+                
+                {% for field in form %}
+                <div class="form-floating mb-4">
+                    <input type="{{ field.field.widget.input_type }}" name="{{ field.name }}" 
+                           class="form-control" id="{{ field.id_for_label }}" placeholder="{{ field.label }}" required>
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {% if field.help_text %}
+                        <div class="form-text small opacity-50 ps-1" style="font-size: 0.7rem;">{{ field.help_text|safe }}</div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+
+                <button type="submit" class="btn glow-portal-btn w-100 mb-4 py-3">
+                    INITIALIZE PROFILE <i class="fas fa-check-circle ms-2"></i>
+                </button>
+                
+                <div class="text-center">
+                    <p class="text-muted small">Already registered? <a href="{% url 'login' %}" class="text-dark fw-bold text-decoration-none">Access Portal</a></p>
+                </div>
+
+                {% if form.errors %}
+                <div class="alert alert-danger mt-4 rounded-3 border-0 small py-2">
+                    <i class="fas fa-exclamation-circle me-2"></i> Registration sequence failed.
+                </div>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
